@@ -89,3 +89,95 @@ INNER JOIN order_items oi
     ON p.product_id = oi.product_id
 GROUP BY p.category
 ORDER BY Total_Amount DESC;
+
+-- 7 - Business question: Show which products were purchased and how much each order item generated.
+
+SELECT  
+    p.product_name AS product_name,
+    p.category AS category,
+    oi.order_id AS order_id,
+    oi.quantity AS quantity,
+    oi.total_amount AS total_amount
+FROM products AS p
+INNER JOIN order_items AS oi
+    ON p.product_id = oi.product_id
+LIMIT 10;
+
+-- 8 - Business question: Find all registered customers and their corresponding orders, including customers who have never placed an order.
+
+SELECT 
+    c.customer_id AS customer_id,
+    c.first_name AS first_name,
+    c.city AS city,
+    o.order_id AS order_id,
+    o.order_status AS order_status
+FROM customers AS c
+LEFT JOIN orders As o
+    on c.customer_id = o.customer_id
+LIMIT 20;
+
+-- 9 - Business question: Which registered customers have never placed an order?
+
+SELECT 
+    c.customer_id AS customer_id,
+    c.first_name AS first_name,
+    c.city AS city
+FROM customers c
+LEFT JOIN orders o 
+    ON c.customer_id = o.customer_id
+WHERE o.order_id IS NULL
+LIMIT 10;
+
+-- 10 - Find the total amount spent by each customer.
+
+SELECT 
+    c.customer_id as customer_id,
+    c.first_name as first_name,
+    c.city as city,
+    ROUND(SUM(oi.total_amount)) as total_spent
+FROM customers c
+INNER JOIN orders o 
+    ON c.customer_id = o.customer_id
+INNER JOIN order_items oi 
+    ON o.order_id = oi.order_id
+GROUP BY c.customer_id
+LIMIT 10;
+
+-- 11 - Delivered revenue by customer
+
+SELECT 
+    c.customer_id as customer_id,
+    c.first_name as first_name,
+    c.city as city,
+    ROUND(SUM(oi.total_amount)) as total_spent
+FROM customers c
+INNER JOIN orders o 
+    ON c.customer_id = o.customer_id
+INNER JOIN order_items oi 
+    ON o.order_id = oi.order_id
+WHERE o.order_status = "Delivered"
+GROUP BY c.customer_id
+LIMIT 10;
+
+-- 12 - Customers without delivered purchases
+
+SELECT 
+    c.customer_id AS customer_id,
+    c.first_name AS first_name,
+    c.city AS city,
+    COUNT(o.order_id) As total_orders
+FROM customers c 
+LEFT JOIN orders o 
+    ON c.customer_id = o.customer_id
+GROUP BY c.customer_id
+HAVING 
+    COUNT(o.order_id) >= 1
+    AND 
+    SUM(
+        CASE
+            WHEN o.order_status = "Delivered" THEN 1
+            ELSE 0
+        END
+    ) = 0;
+
+
