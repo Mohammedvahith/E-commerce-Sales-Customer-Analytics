@@ -39,3 +39,32 @@ contribute_level AS (
 )
 
 SELECT * FROM contribute_level;
+
+-- MoM Growth 
+WITH monthly_revenue AS (
+    SELECT
+        DATE_FORMAT(o.orders_date, '%Y-%m') AS sales_month,
+        SUM(oi.total_amount) AS monthly_revenue
+    FROM orders o
+    INNER JOIN order_items oi
+        ON o.order_id = oi.order_id
+    GROUP BY DATE_FORMAT(o.orders_date, '%Y-%m')
+),
+previous_revenue as (
+    select
+        sales_month,
+        lag(monthly_revenue) over(
+        order by sales_month) as previous_revenue
+    from monthly_revenue
+)
+
+select 
+    m.sales_month,
+    m.monthly_revenue,
+    p.previous_revenue,
+    ROUND(((m.monthly_revenue-p.previous_revenue)/p.previous_revenue)*100,2) as MoM_growt
+from monthly_revenue m 
+INNER join previous_revenue p 
+on m.sales_month = p.sales_month
+order by m.sales_month
+limit 5;

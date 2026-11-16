@@ -259,3 +259,225 @@ contribute_level AS (
 )
 
 SELECT * FROM contribute_level;
+
+-- 16 - Business question: Rank the five ShopEase product categories by total revenue, from highest to lowest.
+
+WITH category_revenue AS (
+    SELECT 
+        p.category,
+        SUM(oi.total_amount) AS total_revenue
+    from order_items oi 
+    INNER JOIN products p 
+    ON oi.product_id = p.product_id
+    GROUP BY p.category
+)
+
+SELECT category, total_revenue, RANK() OVER (ORDER BY total_revenue DESC) as revenue_rank
+FROM category_revenue
+ORDER BY revenue_rank
+
+
+
+
+WITH product_revenue AS (
+    SELECT
+        p.product_id,
+        p.product_name,
+        p.category,
+        SUM(oi.total_amount) AS total_revenue
+    FROM order_items oi
+     INNER JOIN products p
+        ON oi.product_id = p.product_id
+    GROUP BY
+        p.product_id,
+        p.product_name,
+        p.category
+),
+
+product_ranking AS (
+    SELECT
+        product_id,
+        product_name,
+        category,
+        ROUND(total_revenue, 2) AS total_revenue,
+
+        RANK() OVER (
+            PARTITION BY category
+            ORDER BY total_revenue DESC
+        ) AS category_rank
+
+    FROM product_revenue
+)
+
+SELECT *
+FROM product_ranking
+WHERE category_rank <= 3
+ORDER BY category, category_rank;
+
+SELECT *
+FROM product_ranking
+ORDER BY category, category_rank;
+
+-- 17 - exercise: find exactly one highest-revenue product per category and share the five-row output.
+
+WITH product_revenue AS (
+    SELECT
+        p.product_id,
+        p.product_name,
+        p.category,
+        SUM(oi.total_amount) AS total_revenue
+    FROM order_items oi
+     INNER JOIN products p
+        ON oi.product_id = p.product_id
+    GROUP BY
+        p.product_id,
+        p.product_name,
+        p.category
+),
+
+product_ranking AS (
+    SELECT
+        product_id,
+        product_name,
+        category,
+        ROUND(total_revenue, 2) AS total_revenue,
+
+        ROW_NUMBER() OVER (
+            PARTITION BY category
+            ORDER BY total_revenue DESC, product_id ASC
+        ) AS product_rank
+
+    FROM product_revenue
+)
+
+SELECT *
+FROM product_ranking
+WHERE product_rank = 1
+ORDER BY category, category_rank;
+
+SELECT *
+FROM product_ranking
+ORDER BY category, category_rank;
+
+
+WITH product_revenue AS (
+    SELECT
+        p.product_id,
+        p.product_name,
+        p.category,
+        SUM(oi.total_amount) AS total_revenue
+    FROM order_items oi
+    INNER JOIN products p
+        ON oi.product_id = p.product_id
+    GROUP BY
+        p.product_id,
+        p.product_name,
+        p.category
+),
+
+product_ranking AS (
+    SELECT
+        product_id,
+        product_name,
+        category,
+        ROUND(total_revenue, 2) AS total_revenue,
+
+        ROW_NUMBER() OVER (
+            PARTITION BY category
+            ORDER BY total_revenue DESC, product_id ASC
+        ) AS product_rank
+
+    FROM product_revenue
+)
+
+SELECT *
+FROM product_ranking
+WHERE product_rank = 1
+ORDER BY category;
+
+
+-- 18 - Monthly cumulative revenue
+
+
+WITH monthly_revenue AS (
+    SELECT
+        DATE_FORMAT(o.orders_date, '%Y-%m') AS sales_month,
+        SUM(oi.total_amount) AS monthly_revenue
+    FROM orders o
+    INNER JOIN order_items oi
+        ON o.order_id = oi.order_id
+    GROUP BY DATE_FORMAT(o.orders_date, '%Y-%m')
+)
+
+SELECT
+    sales_month,
+    ROUND(monthly_revenue, 2) AS monthly_revenue,
+
+    ROUND(
+        SUM(monthly_revenue) OVER (
+            ORDER BY sales_month
+        ),
+        2
+    ) AS cumulative_revenue
+
+FROM monthly_revenue
+ORDER BY sales_month;
+
+
+WITH monthly_revenue AS (
+    SELECT
+        DATE_FORMAT(o.orders_date, '%Y-%m') AS sales_month,
+        SUM(oi.total_amount) AS monthly_revenue
+    FROM orders o
+    INNER JOIN order_items oi
+        ON o.order_id = oi.order_id
+    GROUP BY DATE_FORMAT(o.orders_date, '%Y-%m')
+),
+previous_revenue as (
+    select
+        sales_month,
+        lag(monthly_revenue) over(
+        order by sales_month) as previous_revenue
+    from monthly_revenue
+)
+
+select 
+    m.sales_month,
+    m.monthly_revenue,
+    p.previous_revenue,
+    ROUND(((m.monthly_revenue-p.previous_revenue)/p.previous_revenue)*100,2) as MoM_growt
+from monthly_revenue m 
+INNER join previous_revenue p 
+on m.sales_month = p.sales_month
+order by m.sales_month
+limit 5;
+
+-- min and max in the MoM
+
+WITH monthly_revenue AS (
+    SELECT
+        DATE_FORMAT(o.orders_date, '%Y-%m') AS sales_month,
+        SUM(oi.total_amount) AS monthly_revenue
+    FROM orders o
+    INNER JOIN order_items oi
+        ON o.order_id = oi.order_id
+    GROUP BY DATE_FORMAT(o.orders_date, '%Y-%m')
+),
+previous_revenue as (
+    select
+        sales_month,
+        lag(monthly_revenue) over(
+        order by sales_month) as previous_revenue
+    from monthly_revenue
+),
+MoM_growth as (
+    select 
+        ROUND(((m.monthly_revenue-p.previous_revenue)/p.previous_revenue)*100,2) as MoM_growth
+    from monthly_revenue m 
+    INNER join previous_revenue p 
+    on m.sales_month = p.sales_month
+    order by m.sales_month
+)
+
+select max(MoM_growth) as MAX_MoM_Growth,min(MoM_growth) as Min_MoM_Growth
+from MoM_growth;
