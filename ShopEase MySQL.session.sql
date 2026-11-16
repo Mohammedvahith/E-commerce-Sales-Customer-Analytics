@@ -181,3 +181,40 @@ HAVING
     ) = 0;
 
 
+-- 13 - business question: Which product categories generated more than AED 25 million in total sales?
+
+WITH revenue_per_category AS (
+    SELECT p.category,ROUND(SUM(oi.total_amount),2) As total_revenue
+    FROM order_items oi 
+    LEFT JOIN products p 
+    ON oi.product_id = p.product_id
+    GROUP BY p.category
+),
+revenue_filter AS (
+    SELECT category,total_revenue
+    FROM revenue_per_category
+    WHERE total_revenue > 25000000
+)
+
+SELECT * FROM revenue_filter;
+
+-- 14 - Business question: Which product categories generated more than AED 25 million in revenue, and what percentage of total revenue did each category contribute?
+
+WITH revenue_per_category AS (
+    SELECT p.category,ROUND(SUM(oi.total_amount),2) As category_revenue
+    FROM order_items oi 
+    LEFT JOIN products p 
+    ON oi.product_id = p.product_id
+    GROUP BY p.category
+),
+category_total_revenue AS (
+    SELECT ROUND(SUM(category_revenue),2) as total_revenue
+    FROM revenue_per_category
+),
+category_percentage_contribution AS (
+    SELECT r.category,(r.category_revenue/cr.total_revenue)*100 AS contribution
+    FROM revenue_per_category r
+    CROSS JOIN category_total_revenue cr
+)
+
+SELECT * FROM category_percentage_contribution;
