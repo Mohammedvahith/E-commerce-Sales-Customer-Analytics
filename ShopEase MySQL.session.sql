@@ -554,3 +554,73 @@ SELECT
         THEN 1 ELSE 0 END) AS pending_orders
 
 FROM orders;
+
+SELECT
+    a.total_orders,
+    a.delivered_orders,
+    a.cancelled_orders,
+    a.returned_orders,
+    a.pending_orders,
+
+    ROUND((a.delivered_orders / a.total_orders) * 100, 2)
+        AS completion_rate,
+
+    ROUND((a.cancelled_orders / a.total_orders) * 100, 2)
+        AS cancellation_rate,
+
+    ROUND((a.returned_orders / a.total_orders) * 100, 2)
+        AS return_rate,
+
+    ROUND((a.pending_orders / a.total_orders) * 100, 2)
+        AS pending_rate
+
+FROM (
+    SELECT
+        COUNT(*) AS total_orders,
+
+        SUM(CASE WHEN order_status = 'Delivered'
+            THEN 1 ELSE 0 END) AS delivered_orders,
+
+        SUM(CASE WHEN order_status = 'Cancelled'
+            THEN 1 ELSE 0 END) AS cancelled_orders,
+
+        SUM(CASE WHEN order_status = 'Returned'
+            THEN 1 ELSE 0 END) AS returned_orders,
+
+        SUM(CASE WHEN order_status = 'Pending'
+            THEN 1 ELSE 0 END) AS pending_orders
+
+    FROM orders
+) AS a;
+
+
+-- 20 - Average Order Value (AOV)
+
+select 
+    round(sum(oi.total_amount)
+        /
+        count(o.order_id),
+        2
+        ) as overall_AOV,
+    round(SUM(
+            CASE
+                WHEN o.order_status = 'Delivered'
+                THEN oi.total_amount
+                ELSE 0
+            END
+        )
+        /
+        sum(
+            case
+                 when o.order_status = "Delivered"
+                 then 1 
+                 else 0
+            end
+        ),
+        2
+    ) as delivered_AOV
+from orders o
+left join (select order_id,round(sum(total_amount))as total_amount
+from order_items
+group by order_id) oi 
+on o.order_id = oi.order_id;
