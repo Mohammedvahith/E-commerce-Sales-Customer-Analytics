@@ -500,5 +500,57 @@ from (
 
 -- Completion rate 
 
-select count(total_orders,delivered_orders,completion_rate
-from 
+select a.delivered_orders,a.total_orders,(a.delivered_orders/a.total_orders) * 100 as Completion_Rate
+from (
+    select 
+    sum(case
+        when order_status = "Delivered" then 1 
+        else 0
+        END) as delivered_orders,
+    count(order_status) as total_orders
+    from orders
+) a
+
+-- calcellation rate 
+
+select b.cancelled_orders,b.total_orders,(b.cancelled_orders/b.total_orders) * 100 as Completion_Rate
+from (
+    select 
+    sum(case
+        when order_status = "Cancelled" then 1 
+        else 0
+        END) as cancelled_orders,
+    count(order_status) as total_orders
+    from orders
+) b    
+
+-- return rate 
+
+select c.returned_orders,c.total_orders,(c.returned_orders/c.total_orders) * 100 as Completion_Rate
+from (
+    select 
+    sum(case
+        when order_status = "Returned" then 1 
+        else 0
+        END) as returned_orders,
+    count(order_status) as total_orders
+    from orders
+) c 
+
+-- All rates 
+SELECT
+    COUNT(*) AS total_orders,
+
+    SUM(CASE WHEN order_status = 'Delivered'
+        THEN 1 ELSE 0 END) AS delivered_orders,
+
+    SUM(CASE WHEN order_status = 'Cancelled'
+        THEN 1 ELSE 0 END) AS cancelled_orders,
+
+    SUM(CASE WHEN order_status = 'Returned'
+        THEN 1 ELSE 0 END) AS returned_orders,
+
+    SUM(CASE WHEN order_status = 'Pending'
+        THEN 1 ELSE 0 END) AS pending_orders
+
+FROM orders;
