@@ -452,7 +452,7 @@ on m.sales_month = p.sales_month
 order by m.sales_month
 limit 5;
 
--- min and max in the MoM
+-- 19 - min and max in the MoM
 
 WITH monthly_revenue AS (
     SELECT
@@ -481,3 +481,24 @@ MoM_growth as (
 
 select max(MoM_growth) as MAX_MoM_Growth,min(MoM_growth) as Min_MoM_Growth
 from MoM_growth;
+
+-- 20 - Business KPI Analysis — Order Status & Completion Rate.
+-- Out of all the orders customers placed, how many were successfully delivered, cancelled, returned or are still pending?
+
+select 
+    a.order_status,
+    a.status_count,
+    round(
+        a.status_count/ sum(a.status_count) over()*100,2) as status_percentage
+from (
+    select 
+        order_status,
+        count(*) as status_count
+    from orders
+    group by order_status
+) a;
+
+-- Completion rate 
+
+select count(total_orders,delivered_orders,completion_rate
+from 
