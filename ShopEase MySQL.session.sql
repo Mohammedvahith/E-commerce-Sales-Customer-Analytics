@@ -812,3 +812,26 @@ select *
 from order_detail
 order by total_spent DESC
 limit 10;
+
+
+-- 26 - Top 10 products by delivered revenue
+
+SELECT
+    p.product_id,
+    p.product_name,
+    p.category,
+    SUM(oi.quantity) AS total_units_sold,
+    COUNT(DISTINCT oi.order_id) AS total_orders,
+    ROUND(SUM(oi.total_amount), 2) AS delivered_revenue
+FROM orders o
+INNER JOIN order_items oi
+    ON o.order_id = oi.order_id
+INNER JOIN products p
+    ON oi.product_id = p.product_id
+WHERE o.order_status = 'Delivered'
+GROUP BY
+    p.product_id,
+    p.product_name,
+    p.category
+ORDER BY delivered_revenue DESC
+LIMIT 10;
