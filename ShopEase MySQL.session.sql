@@ -646,3 +646,39 @@ left join (
 on o.order_id = oi.order_id
 group by o.order_status;
 
+-- 22 - Revenue by category and order status
+/*
+ Which product categories generate the most delivered revenue,
+ and which categories have the highest returned order value?
+*/
+
+
+WITH category_status_revenue AS (
+    SELECT
+        p.category,
+        o.order_status,
+        SUM(oi.total_amount) AS status_revenue
+    FROM orders o
+    INNER JOIN order_items oi
+        ON o.order_id = oi.order_id
+    INNER JOIN products p
+        ON oi.product_id = p.product_id
+    GROUP BY
+        p.category,
+        o.order_status
+),
+ranked_revenue as (
+    select 
+        *,
+        rank() over(partition by order_status order by status_revenue desc) as revenue_rank
+    from category_status_revenue
+    where order_status in ("Delivered","Returned")
+)
+SELECT 
+    category,
+    order_status,
+    status_revenue
+FROM ranked_revenue
+where revenue_rank = 1;
+
+-- 23 - 
