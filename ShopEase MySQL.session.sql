@@ -725,3 +725,47 @@ SELECT
 FROM category_orders
 ORDER BY return_rate DESC;
 
+-- 24 - Customer analysis
+/*
+Who are the highest-spending customers?
+How many customers are repeat customers?
+Which customers contribute the most revenue?
+*/
+
+with customer_orders as (
+    select 
+        customer_id,
+        count(order_id) as total_orders
+    from orders
+    group by customer_id
+)
+
+select 
+    count(*) as Total_Customer,
+    sum(
+        case
+            when total_orders = 1 then 1
+            else 0
+        end
+    ) as one_time_customers,
+    sum(
+        case
+            when total_orders > 1 then 1
+            else 0
+        end
+    ) as repeat_customers,
+    round(
+        (
+        sum(
+            case
+                when total_orders > 1 then 1
+                else 0
+            end
+            )
+        )
+        /
+        count(*)
+        *100,
+        2
+        )AS repeat_customers_rate
+from customer_orders

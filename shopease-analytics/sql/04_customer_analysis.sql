@@ -18,3 +18,42 @@ HAVING
             ELSE 0
         END
     ) = 0;
+
+-- Customer Purchase Frequency and Repeat Customer Rate
+with customer_orders as (
+    select 
+        customer_id,
+        count(order_id) as total_orders
+    from orders
+    group by customer_id
+)
+
+select 
+    count(*) as Total_Customer,
+    sum(
+        case
+            when total_orders = 1 then 1
+            else 0
+        end
+    ) as one_time_customers,
+    sum(
+        case
+            when total_orders > 1 then 1
+            else 0
+        end
+    ) as repeat_customers,
+    round(
+        (
+        sum(
+            case
+                when total_orders > 1 then 1
+                else 0
+            end
+            )
+        )
+        /
+        count(*)
+        *100,
+        2
+        )AS repeat_customers_rate
+from customer_orders
