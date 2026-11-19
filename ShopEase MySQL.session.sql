@@ -835,3 +835,42 @@ GROUP BY
     p.category
 ORDER BY delivered_revenue DESC
 LIMIT 10;
+
+-- 27 - Top-performing product in each category
+
+with product_revenue as (
+    select 
+        p.product_id,
+        p.product_name,
+        p.category,
+        sum(oi.quantity) as total_units_sold,
+        sum(oi.total_amount) as delivered_revenue
+    from orders o
+    inner join order_items oi 
+        on o.order_id = oi.order_id
+    inner join products p 
+        on oi.product_id - p.product_id
+    where o.order_status = "Delivered"
+    group by 
+        p.product_id,
+        p.product_name,
+        p.category
+),
+product_ranking AS (
+    SELECT
+        *,
+        ROW_NUMBER() OVER (
+            PARTITION BY category
+            ORDER BY delivered_revenue DESC, product_id
+        ) AS product_rank
+    FROM product_revenue
+)
+SELECT
+    product_id,
+    product_name,
+    category,
+    total_units_sold,
+    ROUND(delivered_revenue, 2) AS delivered_revenue
+FROM product_ranking
+WHERE product_rank = 1
+ORDER BY category;
