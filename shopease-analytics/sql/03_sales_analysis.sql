@@ -141,3 +141,42 @@ from order_items
 group by order_id) oi 
 on o.order_id = oi.order_id;
 
+-- Category-wise Return Rate Analysis
+
+WITH category_orders AS (
+    SELECT
+        p.category,
+        COUNT(DISTINCT CASE
+            WHEN o.order_status = 'Delivered'
+            THEN o.order_id
+        END) AS delivered_orders,
+
+        COUNT(DISTINCT CASE
+            WHEN o.order_status = 'Returned'
+            THEN o.order_id
+        END) AS returned_orders
+
+    FROM orders o
+    INNER JOIN order_items oi
+        ON o.order_id = oi.order_id
+    INNER JOIN products p
+        ON oi.product_id = p.product_id
+
+    WHERE o.order_status IN ('Delivered', 'Returned')
+
+    GROUP BY p.category
+)
+
+SELECT
+    category,
+    delivered_orders,
+    returned_orders,
+
+    ROUND(
+        returned_orders * 100.0 /
+        NULLIF(delivered_orders + returned_orders, 0),
+        2
+    ) AS return_rate
+
+FROM category_orders
+ORDER BY return_rate DESC;
