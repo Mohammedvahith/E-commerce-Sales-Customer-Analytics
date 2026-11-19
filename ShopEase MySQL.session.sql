@@ -874,3 +874,98 @@ SELECT
 FROM product_ranking
 WHERE product_rank = 1
 ORDER BY category;
+
+-- 28 - Final comparission between the sql output and python output
+
+-- FINAL SQL VALIDATION
+
+-- 1. Overall and Delivered Revenue
+SELECT
+    ROUND(SUM(oi.total_amount), 2) AS overall_revenue,
+
+    ROUND(
+        SUM(
+            CASE
+                WHEN o.order_status = 'Delivered'
+                THEN oi.total_amount
+                ELSE 0
+            END
+        ), 2
+    ) AS delivered_revenue
+
+FROM orders o
+INNER JOIN order_items oi
+    ON o.order_id = oi.order_id;
+
+
+-- 2. Overall and Delivered AOV
+SELECT
+    ROUND(
+        SUM(oi.order_revenue) / COUNT(o.order_id), 2
+    ) AS overall_AOV,
+
+    ROUND(
+        SUM(
+            CASE
+                WHEN o.order_status = 'Delivered'
+                THEN oi.order_revenue
+                ELSE 0
+            END
+        )
+        /
+        SUM(
+            CASE
+                WHEN o.order_status = 'Delivered'
+                THEN 1
+                ELSE 0
+            END
+        ), 2
+    ) AS delivered_AOV
+
+FROM orders o
+INNER JOIN (
+    SELECT
+        order_id,
+        SUM(total_amount) AS order_revenue
+    FROM order_items
+    GROUP BY order_id
+) oi
+    ON o.order_id = oi.order_id;
+
+
+-- 3. Order Status Counts
+SELECT
+    order_status,
+    COUNT(*) AS total_orders
+FROM orders
+GROUP BY order_status
+ORDER BY total_orders DESC;
+
+
+-- 4. Category-wise Delivered Revenue
+SELECT
+    p.category,
+    ROUND(SUM(oi.total_amount), 2) AS delivered_revenue
+FROM orders o
+INNER JOIN order_items oi
+    ON o.order_id = oi.order_id
+INNER JOIN products p
+    ON oi.product_id = p.product_id
+WHERE o.order_status = 'Delivered'
+GROUP BY p.category
+ORDER BY delivered_revenue DESC;
+
+
+-- 5. Customer Purchase Frequency
+WITH customer_orders AS (
+    SELECT
+        customer_id,
+        COUNT(*) AS total_orders
+    FROM orders
+    GROUP BY customer_id
+)
+SELECT
+    COUNT(*) AS total_customers,
+    SUM(total_orders = 1) AS one_time_customers,
+    SUM(total_orders > 1) AS repeat_customers
+FROM customer_orders;
