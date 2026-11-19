@@ -838,20 +838,20 @@ LIMIT 10;
 
 -- 27 - Top-performing product in each category
 
-with product_revenue as (
-    select 
+WITH product_revenue AS (
+    SELECT
         p.product_id,
         p.product_name,
         p.category,
-        sum(oi.quantity) as total_units_sold,
-        sum(oi.total_amount) as delivered_revenue
-    from orders o
-    inner join order_items oi 
-        on o.order_id = oi.order_id
-    inner join products p 
-        on oi.product_id - p.product_id
-    where o.order_status = "Delivered"
-    group by 
+        SUM(oi.quantity) AS total_units_sold,
+        SUM(oi.total_amount) AS delivered_revenue
+    FROM orders o
+    INNER JOIN order_items oi
+        ON o.order_id = oi.order_id
+    INNER JOIN products p
+        ON oi.product_id = p.product_id
+    WHERE o.order_status = 'Delivered'
+    GROUP BY
         p.product_id,
         p.product_name,
         p.category
