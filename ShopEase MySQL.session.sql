@@ -624,3 +624,25 @@ left join (select order_id,round(sum(total_amount))as total_amount
 from order_items
 group by order_id) oi 
 on o.order_id = oi.order_id;
+
+-- 21 - Revenue analysis by order status
+
+-- business question:
+-- How much revenue does each order status represent?
+
+select 
+    o.order_status,
+    round(sum(total_amount),2) as status_value,
+    round(sum(total_amount)/sum(sum(total_amount)) over()*100,2) as value_percentage
+from orders o 
+left join (
+    select 
+        order_id,
+        sum(total_amount) as total_amount,
+        count(order_id) as total_orders
+    from order_items
+    group by order_id
+    ) oi 
+on o.order_id = oi.order_id
+group by o.order_status;
+
