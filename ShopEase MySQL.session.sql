@@ -969,3 +969,4 @@ SELECT
     SUM(total_orders = 1) AS one_time_customers,
     SUM(total_orders > 1) AS repeat_customers
 FROM customer_orders;
+
