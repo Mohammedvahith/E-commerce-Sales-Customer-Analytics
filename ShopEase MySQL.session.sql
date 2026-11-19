@@ -769,3 +769,46 @@ select
         2
         )AS repeat_customers_rate
 from customer_orders
+
+-- 25 - Top 10 highest-spending customers
+/*
+Who are the 10 customers generating the highest revenue?
+
+We will use:
+- customers
+- orders
+- order_items
+- SUM() to calculate customer revenue.
+- ORDER BY and LIMIT to find the top 10.
+*/
+
+with total_orders_items as (
+    select 
+        order_id,
+        round(sum(total_amount),2) as total_amount_per_order
+    from order_items
+    group by order_id
+),
+order_detail as (
+    select 
+        o.customer_id,
+        c.first_name,
+        c.city,
+        count(o.order_id) as total_orders,
+        round(sum(total_amount_per_order),2) as total_spent
+    from orders as o 
+    inner join total_orders_items as toi 
+        on o.order_id = toi.order_id
+    inner join customers as c 
+        on o.customer_id = c.customer_id
+    where o.order_status = "Delivered"
+    group by 
+        o.customer_id,
+        c.first_name,
+        c.city
+)
+
+select * 
+from order_detail
+order by total_spent DESC
+limit 10;
