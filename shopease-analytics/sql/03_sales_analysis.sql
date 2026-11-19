@@ -1,46 +1,78 @@
+
+USE shopease;
+
+-- =====================================================
+-- 03. SALES ANALYSIS
+-- =====================================================
+
+
+-- =====================================================
+-- 1. REVENUE BY CATEGORY
 -- Business Question:
 -- Which product category generates the highest total amount?
+-- Includes all order statuses.
+-- =====================================================
 
 SELECT
-    p.category AS Category,
-    ROUND(SUM(oi.total_amount), 2) AS Total_Amount
+    p.category,
+    ROUND(SUM(oi.total_amount), 2) AS total_revenue
 FROM products p
 INNER JOIN order_items oi
     ON p.product_id = oi.product_id
 GROUP BY p.category
-ORDER BY Total_Amount DESC;
+ORDER BY total_revenue DESC;
+
+
+-- =====================================================
+-- 2. CATEGORY REVENUE CONTRIBUTION
+-- Business Question:
+-- What percentage of total revenue does each category contribute?
+-- Includes all order statuses.
+-- =====================================================
 
 WITH revenue_per_category AS (
-    SELECT p.category,ROUND(SUM(oi.total_amount),2) As category_revenue
-    FROM order_items oi 
-    LEFT JOIN products p 
-    ON oi.product_id = p.product_id
+    SELECT
+        p.category,
+        SUM(oi.total_amount) AS category_revenue
+    FROM order_items oi
+    INNER JOIN products p
+        ON oi.product_id = p.product_id
     GROUP BY p.category
 ),
+
 category_total_revenue AS (
-    SELECT ROUND(SUM(category_revenue),2) as total_revenue
+    SELECT
+        SUM(category_revenue) AS total_revenue
     FROM revenue_per_category
 ),
+
 category_percentage_contribution AS (
-    SELECT r.category,(r.category_revenue/cr.total_revenue)*100 AS contribution
+    SELECT
+        r.category,
+        (r.category_revenue / cr.total_revenue) * 100 AS contribution
     FROM revenue_per_category r
     CROSS JOIN category_total_revenue cr
-),
-contribute_level AS (
-    SELECT 
-        category, 
-        contribution AS contribution_percentage,
-        CASE 
-            WHEN contribution > 20 THEN "High Contribution"
-            WHEN contribution < 20 AND contribution > 19 THEN "Moderate Contribution"
-            ELSE "Low Contribution"
-        END AS "contribution_level"
-    FROM category_percentage_contribution
 )
 
-SELECT * FROM contribute_level;
+SELECT
+    category,
+    ROUND(contribution, 2) AS contribution_percentage,
+    CASE
+        WHEN contribution > 20 THEN 'High Contribution'
+        WHEN contribution > 19 THEN 'Moderate Contribution'
+        ELSE 'Low Contribution'
+    END AS contribution_level
+FROM category_percentage_contribution
+ORDER BY contribution DESC;
 
--- MoM Growth 
+
+-- =====================================================
+-- 3. MONTHLY REVENUE AND MONTH-OVER-MONTH GROWTH
+-- Business Question:
+-- How does revenue change from one month to another?
+-- Includes all order statuses.
+-- =====================================================
+
 WITH monthly_revenue AS (
     SELECT
         DATE_FORMAT(o.orders_date, '%Y-%m') AS sales_month,
@@ -50,27 +82,36 @@ WITH monthly_revenue AS (
         ON o.order_id = oi.order_id
     GROUP BY DATE_FORMAT(o.orders_date, '%Y-%m')
 ),
-previous_revenue as (
-    select
+
+previous_revenue AS (
+    SELECT
         sales_month,
-        lag(monthly_revenue) over(
-        order by sales_month) as previous_revenue
-    from monthly_revenue
+        monthly_revenue,
+        LAG(monthly_revenue) OVER (
+            ORDER BY sales_month
+        ) AS previous_revenue
+    FROM monthly_revenue
 )
 
-select 
-    m.sales_month,
-    m.monthly_revenue,
-    p.previous_revenue,
-    ROUND(((m.monthly_revenue-p.previous_revenue)/p.previous_revenue)*100,2) as MoM_growt
-from monthly_revenue m 
-INNER join previous_revenue p 
-on m.sales_month = p.sales_month
-order by m.sales_month
-limit 5;
+SELECT
+    sales_month,
+    ROUND(monthly_revenue, 2) AS monthly_revenue,
+    ROUND(previous_revenue, 2) AS previous_revenue,
+    ROUND(
+        ((monthly_revenue - previous_revenue)
+        / previous_revenue) * 100,
+        2
+    ) AS MoM_growth
+FROM previous_revenue
+ORDER BY sales_month;
 
--- Order Status KPI Analysis
--- Total Orders, Delivered, Cancelled, Returned and Pending Rates
+
+-- =====================================================
+-- 4. ORDER STATUS KPI ANALYSIS
+-- Business Question:
+-- What percentage of orders are delivered, cancelled,
+-- returned and pending?
+-- =====================================================
 
 SELECT
     a.total_orders,
@@ -79,46 +120,95 @@ SELECT
     a.returned_orders,
     a.pending_orders,
 
-    ROUND((a.delivered_orders / a.total_orders) * 100, 2)
-        AS completion_rate,
+    ROUND(
+        a.delivered_orders / a.total_orders * 100, 2
+    ) AS completion_rate,
 
-    ROUND((a.cancelled_orders / a.total_orders) * 100, 2)
-        AS cancellation_rate,
+    ROUND(
+        a.cancelled_orders / a.total_orders * 100, 2
+    ) AS cancellation_rate,
 
-    ROUND((a.returned_orders / a.total_orders) * 100, 2)
-        AS return_rate,
+    ROUND(
+        a.returned_orders / a.total_orders * 100, 2
+    ) AS return_rate,
 
-    ROUND((a.pending_orders / a.total_orders) * 100, 2)
-        AS pending_rate
+    ROUND(
+        a.pending_orders / a.total_orders * 100, 2
+    ) AS pending_rate
 
 FROM (
     SELECT
         COUNT(*) AS total_orders,
 
-        SUM(CASE WHEN order_status = 'Delivered'
-            THEN 1 ELSE 0 END) AS delivered_orders,
+        SUM(CASE
+            WHEN order_status = 'Delivered' THEN 1
+            ELSE 0
+        END) AS delivered_orders,
 
-        SUM(CASE WHEN order_status = 'Cancelled'
-            THEN 1 ELSE 0 END) AS cancelled_orders,
+        SUM(CASE
+            WHEN order_status = 'Cancelled' THEN 1
+            ELSE 0
+        END) AS cancelled_orders,
 
-        SUM(CASE WHEN order_status = 'Returned'
-            THEN 1 ELSE 0 END) AS returned_orders,
+        SUM(CASE
+            WHEN order_status = 'Returned' THEN 1
+            ELSE 0
+        END) AS returned_orders,
 
-        SUM(CASE WHEN order_status = 'Pending'
-            THEN 1 ELSE 0 END) AS pending_orders
+        SUM(CASE
+            WHEN order_status = 'Pending' THEN 1
+            ELSE 0
+        END) AS pending_orders
 
     FROM orders
 ) AS a;
 
--- Average Order Value (AOV)
 
-select 
-    round(sum(oi.total_amount)
-        /
-        count(o.order_id),
+-- =====================================================
+-- 5. REVENUE CONTRIBUTION BY ORDER STATUS
+-- Business Question:
+-- How much revenue value is associated with each order status?
+-- =====================================================
+
+SELECT
+    o.order_status,
+    ROUND(SUM(oi.total_amount), 2) AS status_revenue,
+
+    ROUND(
+        SUM(oi.total_amount)
+        / SUM(SUM(oi.total_amount)) OVER() * 100,
         2
-        ) as overall_AOV,
-    round(SUM(
+    ) AS revenue_percentage
+
+FROM orders o
+INNER JOIN (
+    SELECT
+        order_id,
+        SUM(total_amount) AS total_amount
+    FROM order_items
+    GROUP BY order_id
+) oi
+    ON o.order_id = oi.order_id
+
+GROUP BY o.order_status
+ORDER BY status_revenue DESC;
+
+
+-- =====================================================
+-- 6. AVERAGE ORDER VALUE (AOV)
+-- Business Question:
+-- What is the average order value overall and
+-- for delivered orders?
+-- =====================================================
+
+SELECT
+    ROUND(
+        SUM(oi.total_amount) / COUNT(o.order_id),
+        2
+    ) AS overall_AOV,
+
+    ROUND(
+        SUM(
             CASE
                 WHEN o.order_status = 'Delivered'
                 THEN oi.total_amount
@@ -126,26 +216,38 @@ select
             END
         )
         /
-        sum(
-            case
-                 when o.order_status = "Delivered"
-                 then 1 
-                 else 0
-            end
+        SUM(
+            CASE
+                WHEN o.order_status = 'Delivered'
+                THEN 1
+                ELSE 0
+            END
         ),
         2
-    ) as delivered_AOV
-from orders o
-left join (select order_id,round(sum(total_amount))as total_amount
-from order_items
-group by order_id) oi 
-on o.order_id = oi.order_id;
+    ) AS delivered_AOV
 
--- Category-wise Return Rate Analysis
+FROM orders o
+LEFT JOIN (
+    SELECT
+        order_id,
+        SUM(total_amount) AS total_amount
+    FROM order_items
+    GROUP BY order_id
+) oi
+    ON o.order_id = oi.order_id;
+
+
+-- =====================================================
+-- 7. CATEGORY-WISE RETURN RATE ANALYSIS
+-- Business Question:
+-- Which product category has the highest return rate?
+-- Return rate = Returned Orders / (Delivered + Returned Orders)
+-- =====================================================
 
 WITH category_orders AS (
     SELECT
         p.category,
+
         COUNT(DISTINCT CASE
             WHEN o.order_status = 'Delivered'
             THEN o.order_id
@@ -173,8 +275,8 @@ SELECT
     returned_orders,
 
     ROUND(
-        returned_orders * 100.0 /
-        NULLIF(delivered_orders + returned_orders, 0),
+        returned_orders * 100.0
+        / NULLIF(delivered_orders + returned_orders, 0),
         2
     ) AS return_rate
 
